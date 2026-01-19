@@ -46,9 +46,8 @@ lerna-debug.log*
 *.tmp
 *.temp
 
-# Git
-.git/
 
 *.md
+!README.md
 *.txt
 

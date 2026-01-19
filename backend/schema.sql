@@ -24,7 +24,7 @@ DECLARE
     random_rating INTEGER;
 BEGIN
     FOR i IN 1..10000 LOOP
-        random_rating := FLOOR(RANDOM() * 4901 + 100)::INTEGER;
+        random_rating := FLOOR(RANDOM() * 4401 + 100)::INTEGER;
         INSERT INTO users (username, rating)
         VALUES (generate_username(i), random_rating)
         ON CONFLICT (username) DO NOTHING;

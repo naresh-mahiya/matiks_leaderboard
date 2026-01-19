@@ -8,6 +8,8 @@ import {
     RefreshControl,
     TouchableOpacity,
     Alert,
+    Platform,
+    Modal,
 } from 'react-native';
 import { fetchLeaderboard, simulateGameplay } from '../services/api';
 import SkeletonCard from '../components/SkeletonCard';
@@ -18,6 +20,7 @@ export default function LeaderboardScreen() {
     const [refreshing, setRefreshing] = useState(false);
     const [loadingMore, setLoadingMore] = useState(false);
     const [simulating, setSimulating] = useState(false);
+    const [showInfo, setShowInfo] = useState(false);
     const [offset, setOffset] = useState(0);
     const [totalCount, setTotalCount] = useState(0);
     const [error, setError] = useState(null);
@@ -169,17 +172,58 @@ export default function LeaderboardScreen() {
                 ListFooterComponent={renderFooter}
             />
 
-            <TouchableOpacity
-                style={[styles.fab, simulating && styles.fabDisabled]}
-                onPress={handleSimulate}
-                disabled={simulating}
+            <View style={styles.fabContainer}>
+                <TouchableOpacity
+                    style={[styles.fab, simulating && styles.fabDisabled]}
+                    onPress={handleSimulate}
+                    disabled={simulating}
+                >
+                    {simulating ? (
+                        <ActivityIndicator color="#fff" />
+                    ) : (
+                        <View>
+                            <Text style={styles.fabTitle}>⚡ Simulate Update</Text>
+                            <Text style={styles.fabSubtitle}>Update score of 50 random users</Text>
+                        </View>
+                    )}
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                    style={styles.infoButton}
+                    onPress={() => setShowInfo(true)}
+                >
+                    <Text style={styles.infoText}>ℹ️</Text>
+                </TouchableOpacity>
+            </View>
+
+            <Modal
+                animationType="fade"
+                transparent={true}
+                visible={showInfo}
+                onRequestClose={() => setShowInfo(false)}
             >
-                {simulating ? (
-                    <ActivityIndicator color="#fff" />
-                ) : (
-                    <Text style={styles.fabText}>⚡ Simulate Updates</Text>
-                )}
-            </TouchableOpacity>
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <Text style={styles.modalTitle}>⚡ Simulation Mode</Text>
+                        <Text style={styles.modalText}>
+                            This feature demonstrates the "Live Updates" requirement for testing purposes.
+                        </Text>
+                        <Text style={styles.modalText}>
+                            Clicking the button will assign new random scores to <Text style={{ fontWeight: 'bold', color: '#fff' }}>50 users</Text>.
+                        </Text>
+                        <Text style={styles.modalText}>
+                            5 of them will get <Text style={{ fontWeight: 'bold', color: '#FFD700' }}>SUPER HIGH scores (4800+)</Text> so you can see them jump to the top of the leaderboard immediately.
+                        </Text>
+
+                        <TouchableOpacity
+                            style={styles.closeButton}
+                            onPress={() => setShowInfo(false)}
+                        >
+                            <Text style={styles.closeButtonText}>Got it</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 }
@@ -283,14 +327,17 @@ const styles = StyleSheet.create({
         paddingVertical: 20,
         alignItems: 'center',
     },
-    fab: {
+    fabContainer: {
         position: 'absolute',
         bottom: 20,
         right: 20,
+        alignItems: 'flex-end',
+    },
+    fab: {
         backgroundColor: '#6366f1',
         paddingHorizontal: 20,
         paddingVertical: 12,
-        borderRadius: 30,
+        borderRadius: 16,
         elevation: 5,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
@@ -298,9 +345,75 @@ const styles = StyleSheet.create({
         shadowRadius: 3.84,
         flexDirection: 'row',
         alignItems: 'center',
+        marginBottom: 8,
+    },
+    fabTitle: {
+        color: '#fff',
+        fontWeight: 'bold',
+        fontSize: 16,
+    },
+    fabSubtitle: {
+        color: '#c7d2fe',
+        fontSize: 10,
     },
     fabDisabled: {
         opacity: 0.7,
+    },
+    infoButton: {
+        backgroundColor: '#334155',
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 10,
+        borderWidth: 1,
+        borderColor: '#475569',
+    },
+    infoText: {
+        fontSize: 20,
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.7)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+    modalContent: {
+        backgroundColor: '#1e293b',
+        borderRadius: 20,
+        padding: 24,
+        width: '100%',
+        maxWidth: 400,
+        borderWidth: 1,
+        borderColor: '#334155',
+        elevation: 5,
+    },
+    modalTitle: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        color: '#fff',
+        marginBottom: 16,
+        textAlign: 'center',
+    },
+    modalText: {
+        fontSize: 16,
+        color: '#cbd5e1',
+        marginBottom: 12,
+        lineHeight: 24,
+    },
+    closeButton: {
+        backgroundColor: '#6366f1',
+        paddingVertical: 12,
+        borderRadius: 12,
+        marginTop: 12,
+        alignItems: 'center',
+    },
+    closeButtonText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: 'bold',
     },
     fabText: {
         color: '#fff',

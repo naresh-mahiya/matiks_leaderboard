@@ -4,6 +4,9 @@ A production-ready, scalable leaderboard system built to handle millions of user
 
 ---
 
+Live web app: https://matiks-leaderboard-blond.vercel.app
+video link: https://drive.google.com/file/d/1NrKzhSSn-TnJxmyhhnOkmkaLj9fwCjIp/view?usp=drive_link
+
 ## 📖 Evaluation Guide & Approach
 
 This project implements a **"Rank-on-Read"** architecture designed for high-frequency updates and absolute correctness.
@@ -59,6 +62,7 @@ go run main.go
 cd frontend
 npm install
 npx expo start
+or npm run web
 ```
 *Scan the QR code with your phone or press 'w' to run in the browser.*
 

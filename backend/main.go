@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"log"
 	"math/rand"
 	"net/http"
@@ -46,14 +47,12 @@ func main() {
 	initDB()
 	defer db.Close()
 
-	// Start background rating updater
-	go ratingUpdater()
-
 	// Setup routes
 	mux := http.NewServeMux()
 	mux.HandleFunc("/leaderboard", leaderboardHandler)
 	mux.HandleFunc("/search", searchHandler)
 	mux.HandleFunc("/health", healthHandler)
+	mux.HandleFunc("/simulate", simulateHandler)
 
 	// Setup CORS
 	handler := cors.New(cors.Options{
@@ -287,7 +286,7 @@ func ratingUpdater() {
 	for range ticker.C {
 		// Update 10 random users' ratings
 		updateCount := 10
-		
+
 		for i := 0; i < updateCount; i++ {
 			// Get a random user
 			var userID int
@@ -300,10 +299,14 @@ func ratingUpdater() {
 			// Generate new random rating between 100 and 5000
 			// Use 4901 to get 0-4900, then +100 to get 100-5000
 			newRating := rand.Intn(4901) + 100
-			
+
 			// Double check constraints just in case
-			if newRating < 100 { newRating = 100 }
-			if newRating > 5000 { newRating = 5000 }
+			if newRating < 100 {
+				newRating = 100
+			}
+			if newRating > 5000 {
+				newRating = 5000
+			}
 
 			// Update the user's rating
 			_, err = db.Exec("UPDATE users SET rating = $1 WHERE id = $2", newRating, userID)
@@ -314,4 +317,59 @@ func ratingUpdater() {
 
 		log.Printf("Updated %d users' ratings", updateCount)
 	}
+}
+
+// simulateHandler handles POST /simulate to manually update ratings
+// This allows for better demoing of the leaderboard dynamics
+func simulateHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Update 50 random users
+	updateCount := 50
+	highScoreCount := 5 // These will definitely show up on top
+
+	for i := 0; i < updateCount; i++ {
+		// Get a random user
+		var userID int
+		err := db.QueryRow("SELECT id FROM users ORDER BY RANDOM() LIMIT 1").Scan(&userID)
+		if err != nil {
+			log.Printf("Error getting random user: %v", err)
+			continue
+		}
+
+		var newRating int
+
+		// "Smart" Logic:
+		// Make the first few updates SUPER high so they appear on the leaderboard
+		if i < highScoreCount {
+			// Generate rating between 4800 and 5000
+			newRating = rand.Intn(201) + 4800
+		} else {
+			// standard random rating 100-5000
+			newRating = rand.Intn(4901) + 100
+		}
+
+		// Constraint checks
+		if newRating < 100 {
+			newRating = 100
+		}
+		if newRating > 5000 {
+			newRating = 5000
+		}
+
+		// Update the user's rating
+		_, err = db.Exec("UPDATE users SET rating = $1 WHERE id = $2", newRating, userID)
+		if err != nil {
+			log.Printf("Error updating rating: %v", err)
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"status":  "success",
+		"message": fmt.Sprintf("Updated %d users (%d with high scores)", updateCount, highScoreCount),
+	})
 }

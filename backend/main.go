@@ -3,12 +3,12 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"log"
 	"math/rand"
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	_ "github.com/lib/pq"
@@ -39,6 +39,9 @@ type SearchResponse struct {
 }
 
 func main() {
+	// Load .env file
+	loadEnv()
+
 	// Initialize database connection
 	initDB()
 	defer db.Close()
@@ -70,9 +73,39 @@ func main() {
 	log.Fatal(http.ListenAndServe(":"+port, handler))
 }
 
+// Simple .env loader
+func loadEnv() {
+	// Don't overwrite if already set (e.g. in production)
+	if os.Getenv("DATABASE_URL") != "" {
+		return
+	}
+
+	data, err := os.ReadFile(".env")
+	if err != nil {
+		return
+	}
+
+	content := string(data)
+	for _, line := range strings.Split(content, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		parts := strings.SplitN(line, "=", 2)
+		if len(parts) == 2 {
+			key := strings.TrimSpace(parts[0])
+			value := strings.TrimSpace(parts[1])
+			// Remove any quotes
+			value = strings.Trim(value, `"'`)
+			os.Setenv(key, value)
+		}
+	}
+}
+
 func initDB() {
 	var err error
-	
+
 	// Get database URL from environment variable
 	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL == "" {
@@ -91,7 +124,8 @@ func initDB() {
 	}
 
 	// Set connection pool settings
-	db.SetMaxOpenConns(25)
+	// Reduced mainly to prevent "unnamed prepared statement" errors with some PG configs
+	db.SetMaxOpenConns(10)
 	db.SetMaxIdleConns(5)
 	db.SetConnMaxLifetime(5 * time.Minute)
 
@@ -264,7 +298,12 @@ func ratingUpdater() {
 			}
 
 			// Generate new random rating between 100 and 5000
+			// Use 4901 to get 0-4900, then +100 to get 100-5000
 			newRating := rand.Intn(4901) + 100
+			
+			// Double check constraints just in case
+			if newRating < 100 { newRating = 100 }
+			if newRating > 5000 { newRating = 5000 }
 
 			// Update the user's rating
 			_, err = db.Exec("UPDATE users SET rating = $1 WHERE id = $2", newRating, userID)
